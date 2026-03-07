@@ -1,0 +1,35 @@
+# EEGEncoder - Motor Imagery Classification with ZUNA Preprocessing
+
+# Deep Learning
+torch
+torchvision
+
+# EEG Processing
+mne
+pyedflib
+
+# ZUNA (EEG Foundation Model)
+zuna
+
+# Data Handling
+numpy
+scipy
+pandas
+
+# Machine Learning
+scikit-learn
+
+# Configuration
+pyyaml
+omegaconf
+
+# Logging and Monitoring
+tensorboard
+tqdm
+
+# Testing
+pytest
+pytest-cov
+
+# Utilities
+python-dotenv
