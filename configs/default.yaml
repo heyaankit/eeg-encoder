@@ -1,0 +1,36 @@
+# EEGEncoder Training Configuration
+
+# Data
+data:
+  data_dir: "src/data/BCICIV_2a_gdf"
+  subjects: ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09"]
+  train_split: 0.8  # 80% train, 20% validation
+
+# Model
+model:
+  name: "EEGEncoder"
+  n_channels: 22
+  n_times: 1125
+  n_classes: 4
+  n_branches: 5
+  hidden_channels: 16
+
+# Training
+training:
+  epochs: 300
+  batch_size: 64
+  learning_rate: 0.001
+  label_smoothing: 0.1
+  weight_decay: 0.0001
+  early_stopping_patience: 30
+
+# Checkpoints
+checkpoints:
+  dir: "checkpoints"
+  save_best: true
+  save_frequency: 10
+
+# Logging
+logging:
+  log_dir: "logs"
+  tensorboard: false
