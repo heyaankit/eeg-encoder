@@ -7,15 +7,76 @@ Based on professional BCI research:
 - Gaussian noise: Add small noise (σ=0.1)
 - Scaling: Multiply by random factor 0.9-1.1
 - Time-frequency crop: Random time window selection
+- MixUp: Linear interpolation between samples (powerful for EEG)
 
 Reference:
 - "Data augmentation strategies for EEG-based motor imagery decoding" (PMC2022)
 - "Classification of Motor Imagery EEG Signals Based on Data Augmentation" (Sensors 2023)
+- "MixUp: Beyond Empirical Risk Minimization" (ICLR 2018)
 """
 
 import numpy as np
 from typing import Tuple, Optional
 import torch
+import torch.nn.functional as F
+
+
+class MixUp:
+    """MixUp augmentation for EEG - creates virtual training examples by mixing pairs.
+
+    MixUp is particularly effective for EEG because:
+    - Helps learn more robust decision boundaries
+    - Reduces overfitting on small datasets
+    - Improves generalization across subjects
+
+    Reference: "MixUp: Beyond Empirical Risk Minimization" (ICLR 2018)
+    """
+
+    def __init__(self, alpha: float = 0.4, p: float = 0.5):
+        """
+        Initialize MixUp.
+
+        Args:
+            alpha: Beta distribution parameter (higher = more mixing)
+            p: Probability of applying MixUp to a batch
+        """
+        self.alpha = alpha
+        self.p = p
+
+    def __call__(
+        self, x: torch.Tensor, y: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
+        """
+        Apply MixUp to a batch.
+
+        Args:
+            x: Input tensor (batch, channels, times) or (batch, 1, channels, times)
+            y: Labels (batch,)
+
+        Returns:
+            Mixed x, y_a (original labels), y_b (mixed labels), lambda value
+        """
+        if np.random.random() > self.p:
+            # No MixUp applied - return original
+            return x, y, y, 1.0
+
+        # Get batch size
+        batch_size = x.size(0)
+
+        # Generate lambda from Beta distribution
+        lam = np.random.beta(self.alpha, self.alpha)
+
+        # Ensure lambda is not too small (prefer more mixing)
+        lam = max(lam, 1 - lam)
+
+        # Random permutation for mixing
+        index = torch.randperm(batch_size).to(x.device)
+
+        # Mix the inputs
+        mixed_x = lam * x + (1 - lam) * x[index]
+
+        # Return mixed x, original labels, shuffled labels, and lambda
+        return mixed_x, y, y[index], lam
 
 
 class EEGAugmentor:
@@ -23,14 +84,14 @@ class EEGAugmentor:
 
     def __init__(
         self,
-        p_time_shift: float = 0.3,
-        p_channel_dropout: float = 0.3,
-        p_noise: float = 0.3,
-        p_scaling: float = 0.3,
-        max_time_shift: int = 25,  # ±100ms at 250Hz
-        noise_std: float = 0.1,
-        scale_range: Tuple[float, float] = (0.9, 1.1),
-        channel_dropout_ratio: float = 0.2,
+        p_time_shift: float = 0.8,
+        p_channel_dropout: float = 0.8,
+        p_noise: float = 0.8,
+        p_scaling: float = 0.8,
+        max_time_shift: int = 50,
+        noise_std: float = 0.3,
+        scale_range: Tuple[float, float] = (0.7, 1.3),
+        channel_dropout_ratio: float = 0.4,
     ):
         """
         Initialize augmentor.
@@ -40,7 +101,7 @@ class EEGAugmentor:
             p_channel_dropout: Probability of channel dropout
             p_noise: Probability of adding Gaussian noise
             p_scaling: Probability of scaling
-            max_time_shift: Maximum time shift in samples (±100ms = 25 at 250Hz)
+            max_time_shift: Maximum time shift in samples
             noise_std: Standard deviation of Gaussian noise
             scale_range: Range for scaling factor
             channel_dropout_ratio: Ratio of channels to drop
@@ -221,6 +282,22 @@ def create_augmented_dataloader(
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
+
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    """Compute loss for MixUp samples.
+
+    Args:
+        criterion: Loss function (e.g., CrossEntropyLoss)
+        pred: Model predictions
+        y_a: Original labels
+        y_b: Mixed labels
+        lam: MixUp lambda value
+
+    Returns:
+        Mixed loss
+    """
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 
 # Test function

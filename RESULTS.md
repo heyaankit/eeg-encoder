@@ -1,56 +1,62 @@
-# EEGEncoder - BCI IV-2a Training Results
+# EEGEncoder-2a Training - BCI IV Results
 
-## Training Results Summary
+## Training Results Summary (With MixUp Augmentation)
 
-| Subject | Best Val Accuracy |
-|---------|------------------|
-| A01     | 57.89%          |
-| A02     | 33.33%          |
-| A03     | 43.86%          |
-| A04     | 35.09%          |
-| A05     | 33.33%          |
-| A06     | 38.60%          |
-| A07     | 38.60%          |
-| A08     | 49.12%          |
-| A09     | 50.88%          |
-| **Average** | **42.30%**  |
+| Subject | Val Accuracy |
+|---------|-------------|
+| A01     | 64.91%      |
+| A02     | 61.40%      |
+| A03     | 80.70%      |
+| A04     | 47.37%      |
+| A05     | 89.47%      |
+| A06     | 54.39%      |
+| A07     | 92.98%      |
+| A08     | 94.74%      |
+| A09     | 68.42%      |
+| **Average** | **72.71%**  |
 
 ## Target vs Actual
 
 | Metric | Target | Actual |
 |--------|--------|--------|
-| Subject A01 | >75% | 57.89% |
-| Average | >80% | 42.30% |
-| Paper Benchmark | ~86% | 42.30% |
+| Subject A01 | >75% | 64.91% |
+| Average | >80% | 72.71% |
+| Paper Benchmark | 86.46% | 72.71% |
 
-## Analysis
+## Improvements Made
 
-The current results are below target because:
+1. **Fixed Preprocessing**: Added proper standard scaling
+2. **Proper EEGEncoder**: Implemented official architecture from GitHub (166K params)
+   - ConvBlock (EEGNet-like front-end)
+   - 5 parallel DSTS branches (TCN + Transformer)
+   - Dropout 0.3 + label smoothing
+3. **Data Augmentation**: time-shift, channel dropout, noise, scaling
+4. **MixUp Augmentation**: Added MixUp for better generalization
 
-1. **No ZUNA Preprocessing Applied**: The model was trained on raw EEG data without ZUNA denoising
-2. **Simplified Model Architecture**: 73K parameters vs original paper's full model
-3. **Limited Training Data**: 288 trials per subject (only training set used)
+## What Still Needs Work
 
-## Next Steps to Improve Accuracy
+1. **ZUNA Integration**: Not fully integrated - using basic preprocessing
+2. **Domain Adversarial Training (DAT)**: Would help cross-subject generalization
+3. **Hyperparameter Tuning**: Learning rate, model capacity adjustments
 
-1. **Apply ZUNA Preprocessing**: Integrate ZUNA EEG foundation model for denoising
-2. **Use Evaluation Data**: Load both training and evaluation sets for more data
-3. **Hyperparameter Tuning**: Optimize learning rate, batch size, model architecture
-4. **Data Augmentation**: Apply time-shift, channel dropout, noise injection
+## Per-Subject Analysis
+
+- **Best**: A08 (95%), A07 (93%), A05 (89%), A03 (81%)
+- **Challenging**: A04 (47%), A06 (54%), A02 (61%)
 
 ## Checkpoints
 
 All model checkpoints saved to `checkpoints/`:
 - `best_A0X.pt` - Best validation model per subject
-- `final_A0X.pt` - Final epoch model per subject
-- `history_A0X.json` - Training history per subject
 
 ## Training Configuration
 
 - Model: EEGEncoder (5 DSTS branches, 16 hidden channels)
-- Parameters: 73,460
+- Parameters: 166,388
 - Epochs: 200 (with early stopping)
 - Batch Size: 32
 - Learning Rate: 0.001 with ReduceLROnPlateau
 - Label Smoothing: 0.1
-- Device: CUDA (NVIDIA RTX 5080)
+- Augmentation: 2x (time-shift, channel dropout, noise, scaling) + MixUp
+- MixUp: alpha=0.4, prob=0.5
+- Device: CUDA

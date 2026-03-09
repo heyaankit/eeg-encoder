@@ -105,6 +105,9 @@ def main():
         learning_rate=0.001,
         label_smoothing=0.1,
         weight_decay=0.0001,
+        use_mixup=True,
+        mixup_alpha=0.4,
+        mixup_prob=0.5,
     )
 
     history = trainer.train(
@@ -123,7 +126,7 @@ def main():
 
 
 def train_all_subjects():
-    """Train all 9 subjects."""
+    """Train all 9 subjects with increased capacity"""
     subjects = ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09"]
     results = {}
 
@@ -138,13 +141,13 @@ def train_all_subjects():
         )
         X, y, metadata = preprocessor.load_and_preprocess(subject)
 
-        # Create model
+        # Create model with increased capacity (24 hidden channels)
         model = create_eegencoder(
             n_channels=X.shape[1],
             n_times=X.shape[2],
             n_classes=4,
             n_branches=5,
-            hidden_channels=16,
+            hidden_channels=24,  # Increased from 16
         )
 
         # Train with augmentation
@@ -152,14 +155,20 @@ def train_all_subjects():
             X, y, batch_size=32, augmentation_ratio=2, val_split=0.2
         )
 
-        # Train
+        # Train with MixUp
         from src.training.trainer import Trainer
 
-        trainer = Trainer(model=model, learning_rate=0.001)
+        trainer = Trainer(
+            model=model,
+            learning_rate=0.001,
+            use_mixup=True,
+            mixup_alpha=0.4,
+            mixup_prob=0.5,
+        )
         history = trainer.train(
             train_loader=train_loader,
             val_loader=val_loader,
-            epochs=200,
+            epochs=250,
             checkpoint_dir="checkpoints",
             subject=subject,
         )
@@ -170,7 +179,7 @@ def train_all_subjects():
 
     # Print summary
     print("\n" + "=" * 60)
-    print("FINAL RESULTS")
+    print("FINAL RESULTS (Increased Model Capacity)")
     print("=" * 60)
     for subject, acc in results.items():
         print(f"{subject}: {acc:.4f}")
