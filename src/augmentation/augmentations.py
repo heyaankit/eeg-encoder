@@ -84,14 +84,14 @@ class EEGAugmentor:
 
     def __init__(
         self,
-        p_time_shift: float = 0.8,
-        p_channel_dropout: float = 0.8,
-        p_noise: float = 0.8,
-        p_scaling: float = 0.8,
-        max_time_shift: int = 50,
-        noise_std: float = 0.3,
-        scale_range: Tuple[float, float] = (0.7, 1.3),
-        channel_dropout_ratio: float = 0.4,
+        p_time_shift: float = 0.5,
+        p_channel_dropout: float = 0.5,
+        p_noise: float = 0.5,
+        p_scaling: float = 0.5,
+        max_time_shift: int = 40,
+        noise_std: float = 0.2,
+        scale_range: Tuple[float, float] = (0.8, 1.2),
+        channel_dropout_ratio: float = 0.3,
     ):
         """
         Initialize augmentor.

@@ -75,6 +75,7 @@ class Trainer:
         use_mixup: bool = True,
         mixup_alpha: float = 0.4,
         mixup_prob: float = 0.5,
+        use_cosine_annealing: bool = True,
     ):
         self.model = model.to(device)
         self.device = device
@@ -82,9 +83,15 @@ class Trainer:
         self.optimizer = optim.Adam(
             model.parameters(), lr=learning_rate, weight_decay=weight_decay
         )
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode="max", factor=0.5, patience=10
-        )
+
+        if use_cosine_annealing:
+            self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer, T_max=200, eta_min=1e-6
+            )
+        else:
+            self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer, mode="max", factor=0.5, patience=10
+            )
 
         # MixUp settings
         self.use_mixup = use_mixup
@@ -211,7 +218,10 @@ class Trainer:
             epoch_time = time.time() - epoch_start
 
             # Update scheduler
-            self.scheduler.step(val_acc)
+            if isinstance(self.scheduler, optim.lr_scheduler.CosineAnnealingLR):
+                self.scheduler.step()
+            else:
+                self.scheduler.step(val_acc)
 
             # Log history
             self.history["train_loss"].append(train_loss)

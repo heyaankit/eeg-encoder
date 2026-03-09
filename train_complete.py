@@ -108,6 +108,7 @@ def main():
         use_mixup=True,
         mixup_alpha=0.4,
         mixup_prob=0.5,
+        use_cosine_annealing=True,
     )
 
     history = trainer.train(
@@ -141,13 +142,13 @@ def train_all_subjects():
         )
         X, y, metadata = preprocessor.load_and_preprocess(subject)
 
-        # Create model with increased capacity (24 hidden channels)
+        # Create model with original configuration
         model = create_eegencoder(
             n_channels=X.shape[1],
             n_times=X.shape[2],
             n_classes=4,
             n_branches=5,
-            hidden_channels=24,  # Increased from 16
+            hidden_channels=16,
         )
 
         # Train with augmentation
@@ -155,7 +156,7 @@ def train_all_subjects():
             X, y, batch_size=32, augmentation_ratio=2, val_split=0.2
         )
 
-        # Train with MixUp
+        # Train with ReduceLROnPlateau
         from src.training.trainer import Trainer
 
         trainer = Trainer(
@@ -164,6 +165,21 @@ def train_all_subjects():
             use_mixup=True,
             mixup_alpha=0.4,
             mixup_prob=0.5,
+            use_cosine_annealing=False,
+        )
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            epochs=300,
+            checkpoint_dir="checkpoints",
+            subject=subject,
+        )
+        history = trainer.train(
+            train_loader=train_loader,
+            val_loader=val_loader,
+            epochs=300,  # More epochs
+            checkpoint_dir="checkpoints",
+            subject=subject,
         )
         history = trainer.train(
             train_loader=train_loader,
