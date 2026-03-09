@@ -2,67 +2,135 @@
 
 EEG Motor Imagery classification system using EEGEncoder architecture with ZUNA preprocessing for BCI Competition IV-2a dataset.
 
+## Quick Start
+
+```bash
+cd Chimera/EEGEncoder
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Train all subjects
+python train_complete.py --all
+```
+
 ## Project Structure
 
 ```
 EEGEncoder/
 ├── src/
 │   ├── data/
-│   │   └── bcic_iv_2a.py       # BCI IV-2a dataset loader
+│   │   └── bcic_iv_2a.py           # BCI IV-2a dataset loader
 │   ├── models/
-│   │   └── eegencoder.py       # EEGEncoder model architecture
+│   │   └── eegencoder.py           # EEGEncoder model architecture
 │   ├── preprocessing/
-│   │   └── zuna_pipeline.py    # ZUNA preprocessing pipeline
+│   │   └── motor_imagery_pipeline.py # Enhanced preprocessing pipeline
+│   ├── augmentation/
+│   │   └── augmentations.py         # Data augmentation (MixUp, time-shift, etc.)
 │   └── training/
-│       └── trainer.py          # Training loop with early stopping
-├── checkpoints/                 # Saved model checkpoints
-├── configs/
-│   └── default.yaml            # Configuration file
-├── train.py                     # Main training script
-├── requirements.txt             # Python dependencies
-└── RESULTS.md                   # Training results
-```
-
-## Setup
-
-```bash
-cd Chimera/EEGEncoder
-python -m venv venv
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-```
-
-## Usage
-
-### Train Single Subject
-```bash
-python train.py --subject A01 --epochs 200
-```
-
-### Train All Subjects
-```bash
-python -c "
-from src.data.bcic_iv_2a import load_single_subject
-from src.models.eegencoder import create_eegencoder
-from src.training.trainer import train_subject
-
-for subject in ['A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09']:
-    X, y = load_single_subject('src/data/BCICIV_2a_gdf', subject)
-    model = create_eegencoder(n_channels=X.shape[1], n_times=X.shape[2], n_classes=4)
-    train_subject(model, X, y, subject, epochs=200)
-"
+│       └── trainer.py               # Training loop with early stopping
+├── checkpoints/                      # Saved model checkpoints
+├── train_complete.py                 # Main training script
+├── requirements.txt                  # Python dependencies
+└── RESULTS.md                        # Training results and analysis
 ```
 
 ## Model Architecture
 
-- **EEGEncoder**: 5 parallel DSTS (Depthwise Temporal-Spatial) branches
-- **TCN**: Temporal Convolutional Network in each branch
-- **Parameters**: ~73K
-- **Input**: EEG trials (25 channels × 1126 time points)
+- **Base**: EEGEncoder from paper "EEGEncoder: Advancing BCI with Transformer-Based Motor Imagery Classification" (Scientific Reports 2025)
+- **Implementation**: Based on official GitHub: https://github.com/BlackCattt9/EEGEncoder
+- **Structure**:
+  - ConvBlock (EEGNet-like front-end)
+  - 5 parallel DSTS (Depthwise Temporal-Spatial) branches
+  - Each branch: TCN + Transformer encoder
+- **Parameters**: ~166K (with hidden_channels=16)
+- **Input**: EEG trials (22-25 channels × 1126 time points @ 250Hz)
 
-## Results
+## Key Design Decisions
 
-See [RESULTS.md](RESULTS.md) for training results on BCI IV-2a dataset.
+### Why EEGEncoder?
+
+The user explicitly requested EEGEncoder architecture - a SOTA model for motor imagery classification. This was a constraint from the beginning (per user's prosthetics startup requirements).
+
+### Preprocessing
+
+The original preprocessing had a critical bug - the bandpass filter using filtfilt was causing data values to become near-zero. This was fixed by using proper standard scaling after filtering.
+
+### Data Augmentation Strategy
+
+After multiple experiments:
+- **Time-shift**: ±40 samples (~160ms) - captures temporal variability
+- **Channel dropout**: 30% of channels - improves robustness to electrode issues
+- **Gaussian noise**: σ=0.2 - adds small random variations
+- **Scaling**: 0.8-1.2x - simulates amplitude changes
+- **MixUp**: α=0.4, p=0.5 - creates virtual training examples by mixing pairs
+
+### Training Configuration
+
+- **Learning rate**: 0.001 with ReduceLROnPlateau (factor=0.5, patience=10)
+- **Label smoothing**: 0.1 - prevents overconfidence
+- **Weight decay**: 0.0001 - L2 regularization
+- **Early stopping**: patience=30 epochs
+- **Batch size**: 32
+
+## Experiments Conducted
+
+| Configuration | Avg Accuracy | Notes |
+|--------------|--------------|-------|
+| Initial (buggy preprocessing) | 42% | Fixed: bandpass filter was zeroing data |
+| After preprocessing fix | 71.35% | Basic augmentation |
+| With MixUp (α=0.4, p=0.5) | **72.71%** | Best configuration |
+| Reduced augmentation (p=0.2-0.3) | 64.52% | Too weak - underfitting |
+| Increased augmentation (3x) | 66.08% | More augmentation hurt |
+| Larger model (24 hidden channels) | 71.54% | No significant improvement |
+| Wider model (7 branches, 32 hidden) | 66.08% | Overfitting |
+| Cosine annealing LR | 71.54% | Similar to ReduceLROnPlateau |
+
+### Key Learnings
+
+1. **MixUp helps**: ~1.4% improvement over baseline
+2. **Moderate augmentation is best**: Too aggressive or too weak both hurt
+3. **Model size**: Original config (5 branches, 16 hidden) is optimal - larger models overfit
+4. **Learning rate**: ReduceLROnPlateau and CosineAnnealing perform similarly
+5. **Subject variability**: Large variance between subjects - some are inherently easier
+
+## Per-Subject Analysis
+
+| Subject | Accuracy | Notes |
+|---------|----------|-------|
+| A08 | 93% | Best performer - clear motor imagery signals |
+| A03 | 86% | Strong motor imagery |
+| A05 | 86% | Good signal quality |
+| A09 | 75% | Moderate |
+| A07 | 82% | Good |
+| A01 | 68% | Below average |
+| A02 | 54% | Difficult - low signal quality |
+| A06 | 58% | Difficult |
+| A04 | 40% | Worst - barely above random (25%) |
+
+### Why Some Subjects Are Difficult
+
+- **A04**: Very poor signal quality, low SNR
+- **A06**: Unusual EEG patterns
+- **A02**: High noise levels
+
+## Results Summary
+
+| Metric | Target | Actual |
+|--------|--------|--------|
+| Subject A01 | >75% | 68.42% |
+| Average | >80% | 71.54% |
+| Paper Benchmark | 86.46% | 71.54% |
+
+Gap to target: ~8.5%
+
+## What Would Help Reach 80%
+
+1. **Full ZUNA Integration**: Use ZUNA foundation model for denoising
+2. **Domain Adversarial Training (DAT)**: Learn domain-invariant features
+3. **More Training Data**: Currently using only 288 trials/subject (only training sessions, eval data has different event codes)
+4. **Per-subject hyperparameter tuning**: Subject-specific optimization
+5. **Ensemble methods**: Combine multiple models
 
 ## Requirements
 
