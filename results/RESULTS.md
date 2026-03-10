@@ -6,6 +6,10 @@ This document captures the training experiments and findings for EEGEncoder on t
 
 **Note on ZUNA**: We attempted to integrate ZUNA (EEG foundation model) but found it unsuitable for epoched motor imagery data. ZUNA is designed for continuous EEG reconstruction/denoising and requires significant GPU resources (processes entire recordings into thousands of epochs). Our current bandpass filtering (8-32Hz) is well-suited for motor imagery.
 
+## Results Files
+
+- **[RESULTS_DAT.md](RESULTS_DAT.md)** - DAT implementation details, results, and decision record
+
 ## Final Results (Best Configuration)
 
 | Subject | Val Accuracy |
