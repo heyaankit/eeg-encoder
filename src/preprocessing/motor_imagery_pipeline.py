@@ -5,6 +5,7 @@ Based on professional BCI research for BCI Competition IV-2a:
 - High-pass filter: 1Hz (remove drift)
 - Notch filter: 50Hz (power line interference)
 - Bandpass filter: 8-32Hz (motor imagery alpha/beta bands)
+- ZUNA: EEG foundation model for denoising
 - Baseline correction: first 200ms pre-cue
 - Use only 22 EEG channels (exclude 3 EOG)
 
@@ -16,6 +17,7 @@ import mne
 from pathlib import Path
 from typing import Tuple, Optional, List
 import warnings
+import json
 from scipy.signal import cheby2, sosfilt
 
 warnings.filterwarnings("ignore")
@@ -75,6 +77,111 @@ class MotorImageryPreprocessor:
         self.event_codes = {769: 0, 770: 1, 771: 2, 772: 3}
         self.class_labels = {0: "left_hand", 1: "right_hand", 2: "feet", 3: "tongue"}
 
+    def run_zuna_denoising(self, raw: mne.io.Raw, subject: str) -> mne.io.Raw:
+        """
+        Run ZUNA denoising on raw EEG data.
+
+        ZUNA Workflow:
+        1. Save raw data as FIF with montage
+        2. Run ZUNA preprocessing (resample, filter, epoch, normalize)
+        3. Run ZUNA inference (denoise)
+        4. Convert back to FIF
+
+        Args:
+            raw: Raw EEG data
+            subject: Subject ID
+
+        Returns:
+            Denoised raw EEG data
+        """
+        print(f"  Running ZUNA denoising for {subject}...")
+
+        # Store original events and annotations before processing
+        original_annotations = raw.annotations
+        original_info = raw.info.copy()
+
+        # Create temporary directory for ZUNA processing
+        zuna_dir = self.output_dir / "zuna" / subject
+        zuna_dir.mkdir(parents=True, exist_ok=True)
+
+        # Step 1: Set montage and save as FIF
+        fif_path = zuna_dir / "raw.fif"
+        montage = mne.channels.make_standard_montage("standard_1020")
+        raw.set_montage(montage, on_missing="warn")
+
+        # Resample to 256 Hz (ZUNA requirement)
+        raw.resample(256, verbose=False)
+        raw.save(str(fif_path), overwrite=True, verbose=False)
+
+        # Step 2: ZUNA preprocessing
+        try:
+            import zuna
+
+            pt_input_dir = zuna_dir / "1_pt_input"
+            pt_input_dir.mkdir(exist_ok=True)
+
+            zuna.preprocessing(
+                input_dir=str(zuna_dir),
+                output_dir=str(pt_input_dir),
+                apply_notch_filter=False,
+                apply_highpass_filter=True,
+                apply_average_reference=True,
+                preprocessed_fif_dir=str(zuna_dir / "1_fif_filter"),
+            )
+
+            # Step 3: ZUNA inference
+            pt_output_dir = zuna_dir / "2_pt_output"
+            pt_output_dir.mkdir(exist_ok=True)
+
+            zuna.inference(
+                input_dir=str(pt_input_dir),
+                output_dir=str(pt_output_dir),
+                gpu_device="0",  # Use GPU for faster ZUNA processing
+                diffusion_cfg=1.0,
+                diffusion_sample_steps=20,  # Reduced for faster processing
+            )
+
+            # Step 4: Convert back to FIF
+            fif_output_dir = zuna_dir / "3_fif_output"
+            fif_output_dir.mkdir(exist_ok=True)
+
+            zuna.pt_to_fif(input_dir=str(pt_output_dir), output_dir=str(fif_output_dir))
+
+            # Load denoised data
+            denoised_files = list(fif_output_dir.glob("*.fif"))
+            if denoised_files:
+                denoised_raw = mne.io.read_raw_fif(
+                    str(denoised_files[0]), preload=True, verbose=False
+                )
+
+                # Restore original annotations and info
+                denoised_raw.set_annotations(original_annotations)
+                denoised_raw.set_info(original_info)
+
+                # Resample back to original frequency if needed
+                if denoised_raw.info["sfreq"] != 250:
+                    denoised_raw.resample(250, verbose=False)
+
+                print(f"  ZUNA denoising complete")
+                return denoised_raw
+            else:
+                print(f"  ZUNA output not found, using original data")
+                return raw
+
+        except ImportError:
+            print(f"  ZUNA not installed, using basic preprocessing")
+            return raw
+        except Exception as e:
+            print(f"  ZUNA failed: {e}, using original data")
+            return raw
+
+        except ImportError:
+            print(f"  ZUNA not installed, using basic preprocessing")
+            return raw
+        except Exception as e:
+            print(f"  ZUNA failed: {e}, using original data")
+            return raw
+
     def load_and_preprocess(self, subject: str) -> Tuple[np.ndarray, np.ndarray, dict]:
         """
         Load and preprocess a single subject's data.
@@ -87,7 +194,20 @@ class MotorImageryPreprocessor:
             y: Labels (n_trials,)
             metadata: Processing metadata
         """
-        # Load training data
+        # Check for cached ZUNA data first
+        cache_dir = self.output_dir / "zuna_cache"
+        cached_file = cache_dir / f"{subject}_denoised.npz"
+
+        if cached_file.exists():
+            print(f"Loading cached ZUNA data for {subject}...")
+            data = np.load(cached_file)
+            X = data["X"]
+            y = data["y"]
+            metadata = json.loads(data["metadata"])
+            print(f"  Loaded from cache: {X.shape}")
+            return X, y, metadata
+
+        # Otherwise, process from raw
         train_file = self.data_dir / f"{subject}T.gdf"
         eval_file = self.data_dir / f"{subject}E.gdf"
 
@@ -98,6 +218,12 @@ class MotorImageryPreprocessor:
 
         # Load training data
         raw_train = mne.io.read_raw_gdf(str(train_file), preload=True, verbose=False)
+
+        # Apply ZUNA denoising if enabled
+        if self.use_zuna:
+            print(f"  Running ZUNA denoising (before epoching)...")
+            raw_train = self.run_zuna_denoising(raw_train, f"{subject}_train")
+
         X_train, y_train = self._extract_epochs(raw_train)
 
         # Try to load evaluation data
@@ -107,6 +233,12 @@ class MotorImageryPreprocessor:
                 raw_eval = mne.io.read_raw_gdf(
                     str(eval_file), preload=True, verbose=False
                 )
+
+                # Apply ZUNA denoising to eval data
+                if self.use_zuna:
+                    print(f"  Running ZUNA denoising on eval data...")
+                    raw_eval = self.run_zuna_denoising(raw_eval, f"{subject}_eval")
+
                 X_eval, y_eval = self._extract_epochs(raw_eval)
                 print(f"  Loaded {len(X_train)} train + {len(X_eval)} eval trials")
             except Exception as e:
@@ -124,14 +256,20 @@ class MotorImageryPreprocessor:
         # Apply preprocessing
         X = self._preprocess_data(X)
 
+        preprocessing_method = "ZUNA_denoised" if self.use_zuna else "bandpass_8_32Hz"
+
+        # Convert class_distribution to regular Python types for JSON serialization
+        class_counts = np.unique(y, return_counts=True)
+        class_dist = {int(k): int(v) for k, v in zip(class_counts[0], class_counts[1])}
+
         metadata = {
             "subject": subject,
             "n_trials": len(X),
             "n_channels": X.shape[1],
             "n_times": X.shape[2],
-            "class_distribution": dict(zip(*np.unique(y, return_counts=True))),
+            "class_distribution": class_dist,
             "sfreq": 250,
-            "preprocessing": "bandpass_8_32Hz"
+            "preprocessing": preprocessing_method
             if self.filter_alpha_beta
             else "bandpass_1_100Hz",
         }

@@ -51,18 +51,23 @@ def main():
     parser.add_argument(
         "--hidden-channels", type=int, default=16, help="Hidden channels"
     )
+    parser.add_argument(
+        "--use-zuna", action="store_true", default=True, help="Use ZUNA denoising"
+    )
     args = parser.parse_args()
 
     print("=" * 60)
     print(f"Training EEGEncoder on Subject: {args.subject}")
-    print(f"Preprocessing: Bandpass 8-32Hz = {args.filter_bands}")
+    print(f"Preprocessing: ZUNA = {args.use_zuna}, Bandpass = {args.filter_bands}")
     print(f"Augmentation ratio: {args.augmentation_ratio}")
     print("=" * 60)
 
     # Step 1: Load and preprocess data
     print("\n1. Loading and preprocessing BCI IV-2a dataset...")
     preprocessor = MotorImageryPreprocessor(
-        data_dir=args.data_dir, filter_alpha_beta=args.filter_bands
+        data_dir=args.data_dir,
+        filter_alpha_beta=args.filter_bands,
+        use_zuna=args.use_zuna,
     )
 
     X, y, metadata = preprocessor.load_and_preprocess(args.subject)
@@ -136,9 +141,12 @@ def train_all_subjects():
         print(f"Training Subject: {subject}")
         print("=" * 60)
 
-        # Load data
+        # Load data with ZUNA preprocessing (disabled by default - too slow)
+        # Use --use-zuna flag to enable
         preprocessor = MotorImageryPreprocessor(
-            data_dir="src/data/BCICIV_2a_gdf", filter_alpha_beta=True
+            data_dir="src/data/BCICIV_2a_gdf",
+            filter_alpha_beta=True,
+            use_zuna=False,  # Disabled - ZUNA is too slow for full training
         )
         X, y, metadata = preprocessor.load_and_preprocess(subject)
 

@@ -4,7 +4,9 @@
 
 This document captures the training experiments and findings for EEGEncoder on the BCI Competition IV-2a dataset. After multiple rounds of experimentation, we achieved **71.54% average accuracy** (best: 72.71% with MixUp augmentation).
 
-## Final Results
+**Note on ZUNA**: We attempted to integrate ZUNA (EEG foundation model) but found it unsuitable for epoched motor imagery data. ZUNA is designed for continuous EEG reconstruction/denoising and requires significant GPU resources (processes entire recordings into thousands of epochs). Our current bandpass filtering (8-32Hz) is well-suited for motor imagery.
+
+## Final Results (Best Configuration)
 
 | Subject | Val Accuracy |
 |---------|-------------|
@@ -18,6 +20,21 @@ This document captures the training experiments and findings for EEGEncoder on t
 | A08     | 92.98%      |
 | A09     | 75.44%      |
 | **Average** | **71.54%**  |
+
+## Latest Training Run
+
+| Subject | Val Accuracy |
+|---------|-------------|
+| A01     | 61.40%      |
+| A02     | 49.12%      |
+| A03     | 75.44%      |
+| A04     | 35.09%      |
+| A05     | 87.72%      |
+| A06     | 47.37%      |
+| A07     | 92.98%      |
+| A08     | 96.49%      |
+| A09     | 71.93%      |
+| **Average** | **68.62%**  |
 
 ## Target vs Actual
 
