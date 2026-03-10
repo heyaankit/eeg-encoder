@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/license-research-orange.svg)](https://creativecommons.org/licenses/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/heyaankit/eeg-encoder/blob/main/LICENSE)
 [![Paper](https://img.shields.io/badge/paper-Scientific%20Reports-2025-blue.svg)](https://www.nature.com/articles/s41598-025-06364-4)
 [![BCI Competition](https://img.shields.io/badge/BCI-IV--2a-dataset-4--classes-green.svg)](http://bnci-horizon-2020.eu/)
 
