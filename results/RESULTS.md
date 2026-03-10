@@ -150,7 +150,7 @@ Large variance between subjects suggests:
 ## Recommendations for Future Work
 
 ### High Priority
-1. **Full ZUNA Integration**: Use ZUNA foundation model for EEG denoising before classification
+1. ~~**Full ZUNA Integration**~~: ❌ Not suitable for epoched motor imagery data (see note above)
 2. **Domain Adversarial Training (DAT)**: Learn domain-invariant features to help difficult subjects
 
 ### Medium Priority

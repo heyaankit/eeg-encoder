@@ -1,6 +1,6 @@
 # EEGEncoder - Motor Imagery Classification
 
-EEG Motor Imagery classification system using EEGEncoder architecture with ZUNA preprocessing for BCI Competition IV-2a dataset.
+EEG Motor Imagery classification system using EEGEncoder architecture for BCI Competition IV-2a dataset.
 
 ## Quick Start
 

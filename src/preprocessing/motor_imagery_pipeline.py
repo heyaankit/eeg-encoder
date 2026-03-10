@@ -5,7 +5,6 @@ Based on professional BCI research for BCI Competition IV-2a:
 - High-pass filter: 1Hz (remove drift)
 - Notch filter: 50Hz (power line interference)
 - Bandpass filter: 8-32Hz (motor imagery alpha/beta bands)
-- ZUNA: EEG foundation model for denoising
 - Baseline correction: first 200ms pre-cue
 - Use only 22 EEG channels (exclude 3 EOG)
 
