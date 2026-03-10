@@ -40,57 +40,10 @@ EEGEncoder/
 ├── requirements.txt                # Python dependencies
 └── README.md                       # This file
 ```
-EEGEncoder/
-├── src/
-│   ├── data/
-│   │   └── bcic_iv_2a.py           # BCI IV-2a dataset loader
-│   ├── models/
-│   │   ├── eegencoder.py           # EEGEncoder model architecture
-│   │   └── domain_adversarial.py   # DAT module with GRL
-│   ├── preprocessing/
-│   │   └── motor_imagery_pipeline.py # Enhanced preprocessing pipeline
-│   ├── augmentation/
-│   │   └── augmentations.py         # Data augmentation (MixUp, time-shift, etc.)
-│   └── training/
-│       └── trainer.py               # Training loop with early stopping
-├── checkpoints/                      # Saved model checkpoints
-│   └── dat/                         # DAT model checkpoints
-├── results/                         # Results documentation
-│   ├── RESULTS.md                   # Baseline results
-│   └── RESULTS_DAT.md               # DAT results & decisions
-├── train_complete.py                 # Main training script (per-subject)
-├── train_dat.py                      # DAT training script (multi-subject)
-├── requirements.txt                  # Python dependencies
-└── README.md                         # This file
-```
-EEGEncoder/
-├── src/
-│   ├── data/
-│   │   └── bcic_iv_2a.py           # BCI IV-2a dataset loader
-│   ├── models/
-│   │   ├── eegencoder.py           # EEGEncoder model architecture
-│   │   └── domain_adversarial.py   # DAT module with GRL
-│   ├── preprocessing/
-│   │   └── motor_imagery_pipeline.py # Enhanced preprocessing pipeline
-│   ├── augmentation/
-│   │   └── augmentations.py         # Data augmentation (MixUp, time-shift, etc.)
-│   └── training/
-│       └── trainer.py               # Training loop with early stopping
-├── checkpoints/                      # Saved model checkpoints
-│   └── dat/                         # DAT model checkpoints
-├── results/                         # Results documentation
-│   ├── RESULTS.md                   # Baseline results
-│   └── RESULTS_DAT.md               # DAT results & decisions
-├── train_complete.py                 # Main training script (per-subject)
-├── train_dat.py                      # DAT training script (multi-subject)
-├── requirements.txt                  # Python dependencies
-└── README.md                         # This file
-```
 
 ## Model Architecture
 
 - **Base**: EEGEncoder from paper "EEGEncoder: Advancing BCI with Transformer-Based Motor Imagery Classification" (Scientific Reports 2025)
-- **Implementation**: Based on official GitHub: https://github.com/BlackCattt9/EEGEncoder
 - **Structure**:
   - ConvBlock (EEGNet-like front-end)
   - 5 parallel DSTS (Depthwise Temporal-Spatial) branches
@@ -147,7 +100,7 @@ See [results/RESULTS_DAT.md](results/RESULTS_DAT.md) for detailed decision recor
 | Increased augmentation (3x) | 66.08% | More augmentation hurt |
 | Larger model (24 hidden channels) | 71.54% | No significant improvement |
 | Wider model (7 branches, 32 hidden) | 66.08% | Overfitting |
-| | 71. Cosine annealing LR54% | Similar to ReduceLROnPlateau |
+| Cosine annealing LR | 71.54% | Similar to ReduceLROnPlateau |
 | **Domain Adversarial Training (DAT)** | **78.86% val / 90.82% per-subject** | **TARGET ACHIEVED** |
 
 See [results/RESULTS_DAT.md](results/RESULTS_DAT.md) for comprehensive DAT documentation.
