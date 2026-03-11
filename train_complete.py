@@ -143,10 +143,10 @@ def train_all_subjects():
         print(f"Training Subject: {subject}")
         print("=" * 60)
 
-        # Load data with bandpass filtering (ZUNA not used - unsuitable for epoched MI data)
+        # Load data (dataset is already pre-filtered 0.5-100Hz)
         preprocessor = MotorImageryPreprocessor(
             data_dir="src/data/BCICIV_2a_gdf",
-            filter_alpha_beta=True,
+            filter_alpha_beta=False,
         )
         X, y, metadata = preprocessor.load_and_preprocess(subject)
 

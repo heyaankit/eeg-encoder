@@ -1,14 +1,17 @@
 """
-Enhanced Motor Imagery Preprocessing Pipeline
+Motor Imagery Preprocessing Pipeline for BCI Competition IV-2a
 
-Based on professional BCI research for BCI Competition IV-2a:
-- High-pass filter: 1Hz (remove drift)
-- Notch filter: 50Hz (power line interference)
-- Bandpass filter: 8-32Hz (motor imagery alpha/beta bands)
-- Baseline correction: first 200ms pre-cue
-- Use only 22 EEG channels (exclude 3 EOG)
+BCI Competition IV-2a Dataset Characteristics:
+- 22 EEG channels + 3 EOG channels
+- Sampling rate: 250Hz
+- Pre-filtered by competition: 0.5-100Hz (notch filtered at 50Hz)
 
-Reference: Multiple BCI Competition IV winning approaches
+IMPORTANT: Dataset already comes pre-filtered. Additional filtering is NOT needed
+and may actually hurt performance by removing useful signal components.
+
+Preprocessing applied:
+- Standardization: zero mean, unit variance (per channel)
+- Optional: Bandpass filter 8-32Hz (only if explicitly enabled - not recommended)
 """
 
 import numpy as np
@@ -30,8 +33,8 @@ class MotorImageryPreprocessor:
         data_dir: str,
         output_dir: Optional[str] = None,
         use_zuna: bool = False,
-        filter_alpha_beta: bool = True,
-        high_pass: float = 1.0,
+        filter_alpha_beta: bool = False,  # Dataset already pre-filtered 0.5-100Hz
+        high_pass: float = 0.5,
         low_pass: float = 100.0,
         bandpass_low: float = 8.0,
         bandpass_high: float = 32.0,
@@ -335,18 +338,22 @@ class MotorImageryPreprocessor:
 
         return X, y
 
-    def _preprocess_data(self, X: np.ndarray) -> np.ndarray:
+    def _preprocess_data(self, X: np.ndarray, sfreq: float = 250.0) -> np.ndarray:
         """
         Apply preprocessing to EEG data.
 
         Args:
             X: EEG data (n_trials, n_channels, n_times)
+            sfreq: Sampling frequency
 
         Returns:
             Preprocessed EEG data
         """
-        # Apply standard scaling per channel (common for EEG)
-        # Reshape for StandardScaler: (n_trials * n_channels, n_times)
+        # Apply bandpass filtering if enabled
+        if self.filter_alpha_beta:
+            X = self._apply_bandpass_filter(X, sfreq)
+
+        # Apply standard scaling per channel
         n_trials, n_channels, n_times = X.shape
         X_flat = X.transpose(0, 1, 2).reshape(-1, n_times)
 
@@ -359,6 +366,62 @@ class MotorImageryPreprocessor:
         X = X_scaled.reshape(n_trials, n_channels, n_times)
 
         return X.astype(np.float32)
+
+    def _apply_bandpass_filter(self, X: np.ndarray, sfreq: float = 250.0) -> np.ndarray:
+        """
+        Apply bandpass filter to EEG data using MNE.
+
+        Args:
+            X: EEG data (n_trials, n_channels, n_times)
+            sfreq: Sampling frequency
+
+        Returns:
+            Filtered EEG data
+        """
+        # Use scipy's butterworth filter (same as MNE uses internally)
+        from scipy.signal import butter, filtfilt
+
+        nyquist = sfreq / 2
+
+        # Start with copy of data
+        X_filtered = X.copy()
+
+        # Step 1: High-pass filter to remove DC drift
+        if self.high_pass > 0:
+            high = self.high_pass / nyquist
+            high = max(0.001, min(high, 0.99))
+            b_hp, a_hp = butter(4, high, btype="high")
+
+            for i in range(X_filtered.shape[0]):
+                for ch in range(X_filtered.shape[1]):
+                    X_filtered[i, ch, :] = filtfilt(b_hp, a_hp, X_filtered[i, ch, :])
+
+        # Step 2: Notch filter at 50Hz (already applied in dataset, re-apply for cleanliness)
+        if self.notch_freq > 0:
+            notch = self.notch_freq / nyquist
+            bandwidth = 2.0 / nyquist  # 2Hz notch width
+            b_notch, a_notch = butter(
+                4, [notch - bandwidth / 2, notch + bandwidth / 2], btype="bandstop"
+            )
+
+            for i in range(X_filtered.shape[0]):
+                for ch in range(X_filtered.shape[1]):
+                    X_filtered[i, ch, :] = filtfilt(
+                        b_notch, a_notch, X_filtered[i, ch, :]
+                    )
+
+        # Step 3: Bandpass filter for motor imagery bands (8-32Hz) - KEY FILTER
+        low = self.bandpass_low / nyquist
+        high = self.bandpass_high / nyquist
+        low = max(0.001, min(low, 0.99))
+        high = max(low + 0.01, min(high, 0.99))
+        b_bp, a_bp = butter(4, [low, high], btype="band")
+
+        for i in range(X_filtered.shape[0]):
+            for ch in range(X_filtered.shape[1]):
+                X_filtered[i, ch, :] = filtfilt(b_bp, a_bp, X_filtered[i, ch, :])
+
+        return X_filtered
 
     def process_subject(self, subject: str) -> Tuple[np.ndarray, np.ndarray]:
         """Process a single subject - convenience method."""
@@ -402,7 +465,7 @@ if __name__ == "__main__":
     print(f"Testing Motor Imagery Preprocessing: {subject}")
     print("=" * 60)
 
-    preprocessor = MotorImageryPreprocessor(data_dir=data_dir, filter_alpha_beta=True)
+    preprocessor = MotorImageryPreprocessor(data_dir=data_dir, filter_alpha_beta=False)
 
     X, y, metadata = preprocessor.load_and_preprocess(subject)
 

@@ -35,7 +35,7 @@ def load_all_subjects(data_dir, subjects):
     print("Loading all subjects for DAT training...")
 
     preprocessor = MotorImageryPreprocessor(
-        data_dir=data_dir, filter_alpha_beta=True, use_zuna=False
+        data_dir=data_dir, filter_alpha_beta=False, use_zuna=False
     )
 
     all_X = []
@@ -173,17 +173,20 @@ def evaluate_per_subject(model, data_dir, subjects):
     """Evaluate model on each subject individually."""
     model.eval()
 
+    # Get device from model
+    device = next(model.parameters()).device
+
     results = {}
 
     preprocessor = MotorImageryPreprocessor(
-        data_dir=data_dir, filter_alpha_beta=True, use_zuna=False
+        data_dir=data_dir, filter_alpha_beta=False, use_zuna=False
     )
 
     for subject in subjects:
         X, y, _ = preprocessor.load_and_preprocess(subject)
 
-        X_tensor = torch.FloatTensor(X).unsqueeze(1)
-        y_tensor = torch.LongTensor(y)
+        X_tensor = torch.FloatTensor(X).unsqueeze(1).to(device)
+        y_tensor = torch.LongTensor(y).to(device)
 
         dataset = TensorDataset(X_tensor, y_tensor)
         loader = DataLoader(dataset, batch_size=32)

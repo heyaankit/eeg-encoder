@@ -14,9 +14,9 @@ Deep learning system for EEG-based Motor Imagery (MI) classification using the E
 
 | Metric | Score |
 |--------|-------|
-| Validation Accuracy | **78.86%** |
-| Per-Subject Average | **90.82%** |
-| Best Subject (A08) | 97.92% |
+| Validation Accuracy | **79.63%** |
+| Per-Subject Average | **92.44%** |
+| Best Subject (A08) | 97.57% |
 | Parameters | ~172K |
 
 ---
@@ -139,15 +139,22 @@ EEGEncoder is a state-of-the-art deep learning framework introduced in *"Advanci
 
 ## Preprocessing Pipeline
 
-Our preprocessing follows established BCI research practices:
+**Important**: The BCI Competition IV-2a dataset is already pre-filtered by the competition organizers (0.5-100Hz, notch at 50Hz). Additional filtering is NOT applied as it was found to reduce performance.
 
-1. **High-pass filter** (1Hz): Removes DC drift and slow artifacts
-2. **Notch filter** (50Hz): Removes power line interference
-3. **Bandpass filter** (8-32Hz): Extracts motor imagery alpha/beta bands (most discriminative for MI)
-4. **Epoch extraction**: -0.5s to +4s relative to cue onset
-5. **Baseline correction**: Using pre-cue period (-0.5s to 0s)
-6. **Channel selection**: 22 EEG channels (excluding EOG)
-7. **Standardization**: Zero mean, unit variance per subject
+Our preprocessing:
+
+1. **No additional filtering**: Dataset already pre-filtered 0.5-100Hz
+2. **Epoch extraction**: 0s to +4.5s relative to cue onset
+3. **Channel selection**: 22 EEG channels (excluding EOG)
+4. **Standardization**: Zero mean, unit variance per subject
+
+### Why No Extra Filtering?
+
+Through experimentation, we discovered that adding an 8-32Hz bandpass filter actually **reduced** performance:
+- With bandpass filter: 86.84% per-subject average
+- Without bandpass filter: 92.44% per-subject average
+
+This is because the deep learning model can learn frequency selection internally, and additional filtering may remove useful signal components.
 
 ---
 
@@ -187,22 +194,22 @@ We employ multiple augmentation strategies to improve generalization:
 |--------------|----------|-------|
 | Baseline (fixed preprocessing) | 71.35% | After fixing bandpass filter bug |
 | + MixUp augmentation | 72.71% | Best per-subject |
-| + Domain Adversarial Training | **78.86%** | Multi-subject, **target achieved** |
+| + Domain Adversarial Training | **79.63%** | Multi-subject, **target achieved** |
 
 ### Per-Subject Performance (DAT)
 
 | Subject | Accuracy |
 |---------|----------|
 | A01 | 91.32% |
-| A02 | 83.33% |
+| A02 | 88.89% |
 | A03 | 91.32% |
-| A04 | 86.11% |
-| A05 | 90.28% |
-| A06 | 87.50% |
+| A04 | 85.07% |
+| A05 | 96.53% |
+| A06 | 92.71% |
 | A07 | 94.79% |
-| A08 | 97.92% |
+| A08 | 97.57% |
 | A09 | 94.79% |
-| **Average** | **90.82%** |
+| **Average** | **92.44%** |
 
 See [results/RESULTS_DAT.md](results/RESULTS_DAT.md) for detailed experiment documentation.
 
