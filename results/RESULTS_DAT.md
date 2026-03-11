@@ -21,11 +21,14 @@
 
 ## Problem Statement
 
-### The Challenge
+### The Challenge (Before DAT)
+
 Our per-subject trained models showed high variance:
 - Some subjects (A08, A03, A05) achieved 85-93% accuracy
 - Other subjects (A02, A04, A06) struggled below 60%
 - Each subject was trained independently with only 288 trials
+
+This motivated us to implement Domain Adversarial Training to learn subject-invariant features.
 
 ### Why Domain Adaptation Matters for Prosthetics
 For a prosthetics startup, we need:
