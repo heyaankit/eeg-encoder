@@ -4,7 +4,7 @@
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/heyaankit/eeg-encoder/blob/main/LICENSE)
 [![Paper](https://img.shields.io/badge/paper-Scientific%20Reports-2025-blue.svg)](https://www.nature.com/articles/s41598-025-06364-4)
-[![BCI Competition](https://img.shields.io/badge/BCI-IV--2a-dataset-4--classes-green.svg)](http://bnci-horizon-2020.eu/)
+[![Dataset](https://img.shields.io/badge/dataset-BCI%20IV--2a-green)](http://bnci-horizon-2020.eu/)
 
 Deep learning system for EEG-based Motor Imagery (MI) classification using the EEGEncoder architecture. Built for the BCI Competition IV-2a dataset to enable brain-computer interface applications for prosthetics.
 
