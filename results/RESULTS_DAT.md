@@ -260,9 +260,8 @@ When `domain_loss` increases (which it does as the discriminator gets better), `
 If we need to push beyond 80%:
 
 1. **True adversarial training**: Implement separate optimizers with proper lambda scheduling
-2. **ZUNA integration**: Use ZUNA for EEG denoising before classification
-3. **Ensemble**: Combine DAT model with per-subject models
-4. **Test-time augmentation**: Average predictions over augmented versions of test data
+2. **Ensemble**: Combine DAT model with per-subject models
+3. **Test-time augmentation**: Average predictions over augmented versions of test data
 
 ---
 
