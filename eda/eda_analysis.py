@@ -768,30 +768,46 @@ legend_elements = [
 ]
 axes[0].legend(handles=legend_elements, loc="upper right", fontsize=8)
 
-# PCA
+# Prepare data for dimensionality reduction
 X_flat = X_all[:, :n_ch, :].reshape(X_all.shape[0], -1)
+
+# PCA - use distinct colors for each class
 pca = PCA(n_components=2)
 X_pca = pca.fit_transform(X_flat[:1000])
+colors_array = np.array(COLORS)[y_all[:1000]]
 scatter = axes[1].scatter(
-    X_pca[:, 0], X_pca[:, 1], c=y_all[:1000], cmap="tab10", alpha=0.5
+    X_pca[:, 0],
+    X_pca[:, 1],
+    c=colors_array,
+    alpha=0.6,
+    edgecolors="white",
+    linewidths=0.5,
 )
 axes[1].set_title("PCA Projection", fontweight="bold")
 axes[1].set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0] * 100:.1f}%)")
 axes[1].set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1] * 100:.1f}%)")
-cbar1 = plt.colorbar(scatter, ax=axes[1])
-cbar1.set_ticks([0, 1, 2, 3])
-cbar1.set_ticklabels(CLASS_NAMES)
 
-# t-SNE
+# Add legend for PCA
+legend_elements1 = [Patch(facecolor=c, label=n) for c, n in zip(COLORS, CLASS_NAMES)]
+axes[1].legend(handles=legend_elements1, loc="best", fontsize=8)
+
+# t-SNE - use distinct colors for each class
 tsne = TSNE(n_components=2, random_state=42, perplexity=30)
 X_tsne = tsne.fit_transform(X_flat[:2000])
+colors_array_tsne = np.array(COLORS)[y_all[:2000]]
 scatter = axes[2].scatter(
-    X_tsne[:, 0], X_tsne[:, 1], c=y_all[:2000], cmap="tab10", alpha=0.5
+    X_tsne[:, 0],
+    X_tsne[:, 1],
+    c=colors_array_tsne,
+    alpha=0.6,
+    edgecolors="white",
+    linewidths=0.5,
 )
 axes[2].set_title("t-SNE Projection", fontweight="bold")
-cbar2 = plt.colorbar(scatter, ax=axes[2])
-cbar2.set_ticks([0, 1, 2, 3])
-cbar2.set_ticklabels(CLASS_NAMES)
+
+# Add legend for t-SNE
+legend_elements2 = [Patch(facecolor=c, label=n) for c, n in zip(COLORS, CLASS_NAMES)]
+axes[2].legend(handles=legend_elements2, loc="best", fontsize=8)
 
 plt.tight_layout()
 plt.savefig(
@@ -984,19 +1000,26 @@ print(f"  Saved: 11_subject_variability.png")
 print("\n[10/10] Outlier detection...")
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
-# Z-score scatter
+# Z-score scatter - use distinct colors for each class
 trial_means = np.mean(X_all, axis=(1, 2))
 trial_stds = np.std(X_all, axis=(1, 2))
 z_means = (trial_means - np.mean(trial_means)) / np.std(trial_means)
 z_stds = (trial_stds - np.mean(trial_stds)) / np.std(trial_stds)
 
-axes[0, 0].scatter(z_means, z_stds, c=y_all, cmap="tab10", alpha=0.5)
+colors_zscore = np.array(COLORS)[y_all]
+axes[0, 0].scatter(
+    z_means, z_stds, c=colors_zscore, alpha=0.6, edgecolors="white", linewidths=0.3
+)
 for v in [3, -3]:
     axes[0, 0].axhline(v, color="red", linestyle="--", alpha=0.5)
     axes[0, 0].axvline(v, color="red", linestyle="--", alpha=0.5)
 axes[0, 0].set_title("Trial Z-Score Distribution")
 axes[0, 0].set_xlabel("Z-score of Mean")
 axes[0, 0].set_ylabel("Z-score of Std")
+
+# Add legend for z-score plot
+legend_elements_z = [Patch(facecolor=c, label=n) for c, n in zip(COLORS, CLASS_NAMES)]
+axes[0, 0].legend(handles=legend_elements_z, loc="upper right", fontsize=8)
 
 # Outlier pie
 outliers = (np.abs(z_means) > 3) | (np.abs(z_stds) > 3)
